@@ -1,0 +1,255 @@
+/*
+1. Write a Program in OpenMP to calculate addition, subtraction, and multiplication of two numbers in parallel sections.
+
+#include <stdio.h>
+#include <omp.h>
+int main(){
+    omp_set_num_threads(4);
+    int a=10;
+    int b=4;
+    int result_add, result_sub, result_mul;
+    #pragma omp parallel sections
+    {
+        #pragma omp section
+        {
+            result_add = a+b;
+            printf("Addition = %d by thread = %d ", result_add, omp_get_thread_num());
+        }
+        #pragma omp section
+        {
+            result_sub = a-b;
+            printf("Subtraction = %d by thread = %d ", result_sub, omp_get_thread_num());
+        }
+        #pragma omp section
+        {
+            result_mul = a*b;
+            printf("Multiply = %d by thread = %d ", result_mul, omp_get_thread_num());
+        }
+    }
+    return 0;
+}
+
+2. Write a Program in OpenMP to perform data initialization through single directive and perform data increment through other threads.
+
+#include <stdio.h>
+#include <omp.h>
+int main(){
+    int data = 0;
+    omp_set_num_threads(4);
+    #pragma omp parallel 
+    {
+        #pragma omp single
+        {
+            data = 42;
+            printf("The initial value of the variable = %d", data);
+        }
+        #pragma omp for 
+        {
+            for (int i = 0; i<4 ; i++)
+            {
+                data+=i;
+                printf("Data = %d , Incremented by = %d", data, omp_get_thread_num());
+            }
+        }
+    }
+    printf("Final value of data = ", data);
+    return 0;
+}
+
+3. Write a Program in OpenMP to demonstrate the scope of private/shared variable.
+
+#include <stdio.h>
+#include <omp.h>
+int main(){
+    int x = 14;
+    omp_set_num_threads(4);
+    #pragma omp parallel private(x)
+    {
+            x+=omp_get_thread_num();
+            printf("Value of x = %d by thread %d ", x, omp_get_thread_num());
+    }
+    printf("Value of x outside parallel region = %d", x);
+    return 0;
+}
+
+4. Write a Program in OpenMP using conditional clause to print values in serialized and parallelized mode.
+
+#include <stdio.h>
+#include <omp.h>
+void test(int val)
+{
+    #pragma omp parallel if(val)
+    if(omp_in_parallel())
+    {
+        #pragma omp single
+        {
+        printf("Parallel region executed by thread = %d", omp_get_thread_num);
+        }
+    }
+    else
+    {
+        printf("Serial Region");
+    }
+}
+int main(){
+    omp_set_num_threads(4);
+    test(0);
+    test(4);
+}
+
+5. Write a Program in OpenMP to calculate the sum of first 100 natural numbers using parallel reduction.
+
+#include <stdio.h>
+#include <omp.h>
+void main()
+{
+    omp_set_num_threads(4);
+    int i, sum=0;
+    #pragma omp parallel for reduction(+:sum)
+    {
+        for (i=1 ; i<=100 ; i++)
+        {
+        sum+=i
+        }
+    }
+    printf("Sum=%d", sum);
+}
+
+6. Write a Program in OpenMP to demonstrate thread synchronization using atomic and critical clause.
+
+#include <stdio.h>
+#include <omp.h>
+int main(){
+    int sum_atomic=0;
+    int sum_critical=0;
+    #pragma omp parallel for
+    {
+        for(int i = 0 ; i<50 ; i++)
+        {
+            #pragma omp atomic
+            sum_atomic+=i;
+        }
+    }
+    #pragma omp parallel for
+    {
+        for(int i = 0 ; i<50 ; i++)
+        {
+            #pragma omp critical
+            for (int j = 0 ; j<1000 ; j++)
+            {
+                sum_critical+=j+i;
+            }
+        }
+    }
+    printf("atomic = %d, critical = %d", sum_atomic, sum_critical);
+    return 0;
+}
+
+7. CUDA code to print Hello from each block
+
+%%cuda
+#include <stdio.h>
+
+__global__ void hello(){
+    printf("Hello from block: %u, thread: %u\n", blockIdx.x, threadIdx.x);
+}
+
+int main(){
+    hello<<<2, 2>>>();
+    cudaDeviceSynchronize();
+}
+
+8. Implement a program in CUDA for addition of two numbers.
+
+%%cuda
+#include <stdio.h>
+
+__global__ void Addition(int *a, int *b, int *c) {
+   *c = *a + *b;
+}
+
+int main() {
+   int a, b, c;
+   int *dev_a, *dev_b, *dev_c;
+   int size = sizeof(int);
+
+   cudaMalloc((void**)&dev_a, size);
+   cudaMalloc((void**)&dev_b, size);
+   cudaMalloc((void**)&dev_c, size);
+
+   a = 30;
+   b = 6;
+
+   cudaMemcpy(dev_a, &a, size, cudaMemcpyHostToDevice);  
+   cudaMemcpy(dev_b, &b, size, cudaMemcpyHostToDevice);  
+
+   Addition<<<1, 1>>>(dev_a, dev_b, dev_c);
+   cudaMemcpy(&c, dev_c, size, cudaMemcpyDeviceToHost);
+
+   cudaFree(dev_a);
+   cudaFree(dev_b);
+   cudaFree(dev_c);
+
+   printf("Result of addition is:%d\n", c);
+
+   return 0;
+}
+
+9. Implement a program in CUDA that calculates the sum of two arrays on the GPU and then transfers the result back to the host for printing.
+
+              %%cuda
+#include <stdio.h>
+
+// Kernel function to add two arrays element-wise
+
+__global__ void addArrays(int *a, int *b, int *c, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        c[idx] = a[idx] + b[idx];
+    }
+}
+
+int main() {
+    const int size = 5;
+    int a[size] = {1, 2, 3, 4, 5};
+    int b[size] = {10, 20, 30, 40, 50};
+    int c[size]; // Result array
+
+    int *d_a, *d_b, *d_c; // Device arrays
+
+    // Allocate memory on the device
+    cudaMalloc((void**)&d_a, size * sizeof(int));
+    cudaMalloc((void**)&d_b, size * sizeof(int));
+    cudaMalloc((void**)&d_c, size * sizeof(int));
+
+    // Transfer data from host to device
+    cudaMemcpy(d_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Define grid and block dimensions
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Launch kernel
+    addArrays<<<blocksPerGrid, threadsPerBlock>>>(d_a, d_b, d_c, size);
+
+    // Wait for kernel to finish
+    cudaDeviceSynchronize();
+
+    // Transfer result from device to host
+    cudaMemcpy(c, d_c, size * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print the result
+    printf("Result of adding two arrays is :\n");
+    for (int i = 0; i < size; ++i) {
+        printf("%d + %d = %d\n", a[i], b[i], c[i]);
+    }
+
+    // Free device memory
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
+
+    return 0;
+}
+*/
